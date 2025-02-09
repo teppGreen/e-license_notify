@@ -1,0 +1,51 @@
+# 設定
+URL = "https://www.e-license.jp/" # eライセンス PCログイン画面
+STUDENT_ID = "00000" # 教習生番号
+PASSWORD = "00000000" # パスワード
+LINE_NOTIFY_TOKEN = ""
+RESERVATION_LIMIT = 2 # 予約枠数の上限
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import requests
+import time
+
+def check_availability():
+    driver = webdriver.Chrome()
+    driver.get(URL)
+
+    # ログイン
+    student_id_input = driver.find_element(By.ID, "p01aForm_b_studentId")
+    password_input = driver.find_element(By.ID, "p01aForm_b_password")
+    login_button = driver.find_element(By.ID, "p01aForm_login")
+
+    student_id_input.send_keys(STUDENT_ID)
+    password_input.send_keys(PASSWORD)
+    login_button.click()
+
+    # 予約済の枠が上限分あるか
+    status3_elements = driver.find_elements(By.CLASS_NAME, "status3")
+    if len(status3_elements) >= RESERVATION_LIMIT:
+        driver.quit()
+        return False
+
+    # 空きの枠があるか
+    status1_elements = driver.find_elements(By.CLASS_NAME, "status1")
+    if len(status1_elements) == 0:
+        driver.quit()
+        return False
+
+    driver.quit()
+    return True
+
+def send_line_notification(message):
+    url = "https://notify-api.line.me/api/notify"
+    headers = {"Authorization": "Bearer " + LINE_NOTIFY_TOKEN}
+    data = {"message": message}
+    requests.post(url, headers=headers, data=data)
+
+# メイン処理
+while True:
+    if check_availability():
+        send_line_notification("技能教習の空きが出たよ！\nhttps://www.e-license.jp/el25/pc/p01a.action")
+    time.sleep(300) # 5分ごとに確認
